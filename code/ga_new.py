@@ -127,8 +127,8 @@ class genetic:
                 ]
                 logger.info(
                     "Mean and Variance of offspring: {} {}".format(
-                        offspring[k, mutation_indices].mean(),
-                        offspring[k, mutation_indices].std(),
+                        offspring[k, crossover_point1].mean(),
+                        offspring[k, crossover_point2].std(),
                     )
                 )
 
