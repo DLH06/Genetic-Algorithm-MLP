@@ -3,9 +3,6 @@ import math
 import random
 
 import numpy
-from numba import jit
-
-# Converting each solution from matrix to vector.
 
 """''
 ##############set logging configurations####################
@@ -15,7 +12,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(level=logging.INFO)
 
 formatter = logging.Formatter("%(levelname)s:%(asctime)s:%(name)s:%(message)s")
-file_Handler = logging.FileHandler(filename=__name__ + "2.log")
+file_Handler = logging.FileHandler(filename="mean_and_variance.log")
 file_Handler.setFormatter(formatter)
 
 logger.addHandler(file_Handler)
@@ -26,12 +23,9 @@ logger.addHandler(file_Handler)
 
 
 class genetic:
-
-    learningRate = 0.5
-
     def __init__(self):
-
         self.mutateRate = numpy.random.uniform(low=0.1, high=0.5)
+        self.learningRate = 5e-2
 
     def mat_to_vector(self, mat_pop_weights):
         pop_weights_vector = []
@@ -127,8 +121,8 @@ class genetic:
                 ]
                 logger.info(
                     "Mean and Variance of offspring: {} {}".format(
-                        offspring[k, mutation_indices].mean(),
-                        offspring[k, mutation_indices].std(),
+                        offspring[k, crossover_point1].mean(),
+                        offspring[k, crossover_point2].std(),
                     )
                 )
 

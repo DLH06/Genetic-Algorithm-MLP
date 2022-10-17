@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(level=logging.INFO)
 
 formatter = logging.Formatter("%(levelname)s:%(asctime)s:%(name)s:%(message)s")
-file_Handler = logging.FileHandler(filename="GA-ANN.log")
+file_Handler = logging.FileHandler(filename="main.log")
 file_Handler.setFormatter(formatter)
 
 logger.addHandler(file_Handler)
@@ -31,7 +31,6 @@ numpy.random.seed(1234)
 
 class dataset:
     def __init__(self):
-
         self.data_inputs = 0
         self.data_outputs = 0
 
@@ -50,7 +49,6 @@ class dataset:
 
 
 class genetic_network:
-
     """
     Genetic algorithm parameters:
         Mating Pool Size (Number of Parents)
@@ -64,17 +62,22 @@ class genetic_network:
         dataset,
         sol_per_pop=50,
         num_parents_mating=25,
-        num_generations=1,
+        num_generations=2000,
         mutation_rate=30,
         crossoverType="onePoint",
         mutationType="adaptive",
+        strict: str = None,
     ):
 
         self.sol_per_pop = sol_per_pop
         self.num_parents_mating = num_parents_mating
         self.num_generations = num_generations
         self.mutation_rate = mutation_rate
-        self.initial_pop_weights = []
+        if strict is None:
+            self.initial_pop_weights = []
+        else:
+            with open(strict, 'rb') as f:
+                self.initial_pop_weights = pickle.load(f)
         self.fitness = 0
         self.accuracies = 0
         self.crossoverType = crossoverType
@@ -84,11 +87,10 @@ class genetic_network:
         self.input_shape = self.data.X_train.shape[1]
         self.HL1_neurons = 128
         self.HL2_neurons = 256
-        self.HL3_neurons = 256
+        self.HL3_neurons = 512
         self.output_neurons = 6
 
     def population(self, data):
-
         # Creating the initial population.
         for curr_sol in numpy.arange(0, self.sol_per_pop):
 
@@ -135,7 +137,6 @@ class genetic_network:
         )
 
     def evolve(self, data):
-
         # create instance of genetic class
         ga = genetic()
         # create dataset instance
@@ -235,7 +236,6 @@ class genetic_network:
 
 
 def main():
-
     data = dataset()
     gn = genetic_network(dataset=data)
     gn.population(data=data)
@@ -247,7 +247,6 @@ def main():
     num_wrong = data.y_test.size - num_correct
     accuracy = 100 * (num_correct / data.y_test.size)
 
-    print()
     print(
         "sol per pop = {} , n parent mating = {}, n generation = {}, mutation rate = {}".format(
             gn.sol_per_pop, gn.num_parents_mating, gn.num_generations, gn.mutation_rate
@@ -258,7 +257,6 @@ def main():
             gn.sol_per_pop, gn.num_parents_mating, gn.num_generations, gn.mutation_rate
         )
     )
-    print()
     print("Number of correct classifications: {}.".format(num_correct))
     logger.info("Number of correct classifications: {}.".format(num_correct))
 
