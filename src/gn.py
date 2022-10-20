@@ -31,9 +31,6 @@ numpy.random.seed(1234)
 
 class dataset:
     def __init__(self):
-        self.data_inputs = 0
-        self.data_outputs = 0
-
         with open("data/dataset_features_6.pkl", "rb") as f:
             self.data_inputs = pickle.load(f)
         # self.features_STDs = numpy.std(a=self.data_inputs2, axis=0)
@@ -44,7 +41,7 @@ class dataset:
         # self.data_inputs = self.data_inputs[:, self.features_STDs > 50]
 
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-            self.data_inputs, self.data_outputs, test_size=0.25
+            self.data_inputs, self.data_outputs, test_size=0.2
         )
 
 
@@ -60,24 +57,19 @@ class genetic_network:
     def __init__(
         self,
         dataset,
-        sol_per_pop=50,
-        num_parents_mating=25,
+        sol_per_pop=20,
+        num_parents_mating=15,
         num_generations=2000,
-        mutation_rate=30,
-        crossoverType="onePoint",
-        mutationType="adaptive",
-        strict: str = None,
+        mutation_rate=5,
+        crossoverType="twoPoint",
+        mutationType="uniform",
     ):
 
         self.sol_per_pop = sol_per_pop
         self.num_parents_mating = num_parents_mating
         self.num_generations = num_generations
         self.mutation_rate = mutation_rate
-        if strict is None:
-            self.initial_pop_weights = []
-        else:
-            with open(strict, 'rb') as f:
-                self.initial_pop_weights = pickle.load(f)
+        self.initial_pop_weights = []
         self.fitness = 0
         self.accuracies = 0
         self.crossoverType = crossoverType
@@ -85,9 +77,9 @@ class genetic_network:
         self.predictions = 0
         self.data = dataset
         self.input_shape = self.data.X_train.shape[1]
-        self.HL1_neurons = 128
-        self.HL2_neurons = 256
-        self.HL3_neurons = 512
+        self.HL1_neurons = 16
+        self.HL2_neurons = 32
+        self.HL3_neurons = 64
         self.output_neurons = 6
 
     def population(self, data):
@@ -141,8 +133,8 @@ class genetic_network:
         ga = genetic()
         # create dataset instance
         data = dataset()
-        pop_weights_mat = numpy.array(self.initial_pop_weights)
-        pop_weights_vector = ga.mat_to_vector(pop_weights_mat)
+        self.pop_weights_mat = numpy.array(self.initial_pop_weights)
+        pop_weights_vector = ga.mat_to_vector(self.pop_weights_mat)
 
         best_outputs = []
         self.accuracies = numpy.empty(shape=(self.num_generations))
@@ -151,24 +143,39 @@ class genetic_network:
         for generation in range(self.num_generations):
 
             # converting the solutions from being vectors to matrices.
-            pop_weights_mat = ga.vector_to_mat(pop_weights_vector, pop_weights_mat)
+            self.pop_weights_mat = ga.vector_to_mat(pop_weights_vector, self.pop_weights_mat)
 
             # Measuring the fitness of each chromosome in the population.
             self.fitness = ANN.fitness(
-                pop_weights_mat, data.X_train, data.y_train, activation="relu"
+                self.pop_weights_mat, data.X_train, data.y_train, activation="relu"
             )
-            self.accuracies[generation] = self.fitness[0]
+            self.accuracies[generation] = numpy.array(self.fitness).mean()
 
             logger.info(
-                "Generation: {} Max Fitness: {}".format(
-                    generation, numpy.max(self.fitness)
+                "Generation: {}/{} Max Fitness: {}".format(
+                    generation, self.num_generations, numpy.max(self.fitness)
                 )
             )
             print(
-                "Generation: {} Max Fitness: {}".format(
-                    generation, numpy.max(self.fitness)
+                "Generation: {}/{} Max Fitness: {}".format(
+                    generation, self.num_generations, numpy.max(self.fitness)
                 )
             )
+
+            # best_weights = self.pop_weights_mat[0, :]
+            # acc, _ = ANN.predict_outputs(
+            #     best_weights, data.X_test, data.y_test, activation="relu"
+            # )
+            # logger.info(
+            #     "Validation: {} Accuracy: {}".format(
+            #         generation, acc
+            #     )
+            # )
+            # print(
+            #     "Validation: {} Accuracy: {}".format(
+            #         generation, acc
+            #     )
+            # )
 
             # Selecting the best parents in the population for mating.
             parents = ga.select_mating_pool(
@@ -196,10 +203,10 @@ class genetic_network:
             pop_weights_vector[0 : parents.shape[0], :] = parents
             pop_weights_vector[parents.shape[0] :, :] = offspring_mutation
 
-        pop_weights_mat = ga.vector_to_mat(pop_weights_vector, pop_weights_mat)
-        best_weights = pop_weights_mat[0, :]
+        self.pop_weights_mat = ga.vector_to_mat(pop_weights_vector, self.pop_weights_mat)
+        best_weights = self.pop_weights_mat[0, :]
         acc, self.predictions = ANN.predict_outputs(
-            best_weights, data.X_test, data.y_test, activation="relu"
+            best_weights, data.X_test, data.y_test, activation="sigmoid"
         )
         print("Accuracy of the best solution is : ", acc)
 
@@ -221,7 +228,7 @@ class genetic_network:
             f"weights_{self.num_generations}_iterations_{self.mutation_rate}_mutation.pkl",
             "wb",
         ) as f:
-            pickle.dump(pop_weights_mat, f)
+            pickle.dump(self.pop_weights_mat, f)
 
     def plot(self):
 
@@ -238,14 +245,20 @@ class genetic_network:
 def main():
     data = dataset()
     gn = genetic_network(dataset=data)
+
+    # train from scratch
     gn.population(data=data)
     gn.evolve(data=data)
     # gn.plot()
-
+    # ---------------------------------
+    # predict
+    with open(f"weights_{gn.num_generations}_iterations_{gn.mutation_rate}_mutation.pkl", 'rb') as f:
+        best_weights = pickle.load(f)
+    best_weights = best_weights[0, :]
+    accuracy, predictions = ANN.predict_outputs(best_weights, data.X_test, data.y_test, activation="relu")
     # Calculating some statistics
-    num_correct = sum(numpy.array(gn.predictions) == numpy.array(data.y_test))
+    num_correct = sum(numpy.array(predictions) == numpy.array(data.y_test))
     num_wrong = data.y_test.size - num_correct
-    accuracy = 100 * (num_correct / data.y_test.size)
 
     print(
         "sol per pop = {} , n parent mating = {}, n generation = {}, mutation rate = {}".format(

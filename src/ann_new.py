@@ -4,7 +4,7 @@ import numpy
 class ANN:
     @classmethod
     def sigmoid(self, inpt):
-        return 1.0 / (1.0 + numpy.exp(-1 * inpt))
+        return 1.0 / (1.0 + numpy.exp(-1.0 * inpt))
 
     @classmethod
     def relu(self, inpt):
@@ -27,7 +27,7 @@ class ANN:
                     r1 = self.sigmoid(r1)
             predicted_label = numpy.where(r1 == numpy.max(r1))[0][0]
             predictions[sample_idx] = predicted_label
-        correct_predictions = numpy.where(predictions == data_outputs)[0].size
+        correct_predictions = sum(numpy.array(predictions) == numpy.array(data_outputs))
         accuracy = (correct_predictions / data_outputs.size) * 100
         return accuracy, predictions
 
